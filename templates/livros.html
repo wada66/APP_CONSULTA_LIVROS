@@ -85,37 +85,18 @@
                                 </div>
                             </div>
 
-                            <!-- Autor com Tipo -->
-                            <div class="col-12">
-                                <div class="filtro-group autor-completo">
-                                    <label><i class="fas fa-user-edit"></i> Autor</label>
-                                    <div class="autor-dual-select">
-                                        <select name="autor_id" class="select2-custom select2-autor" style="width: 100%;">
-                                            <option value="">Selecione um autor...</option>
-                                            {% for autor in autores %}
-                                            <option value="{{ autor.id_autor }}" 
-                                                    data-tipo="{{ autor.tipo_autor }}"
-                                                    {% if filtros.get('autor_id')|string == autor.id_autor|string %}selected{% endif %}>
-                                                {{ autor.nome_autor }}
-                                            </option>
-                                            {% endfor %}
-                                        </select>
-                                        
-                                        <select name="autor_tipo" class="form-control form-control-custom tipo-select" 
-                                                {% if not filtros.get('autor_id') %}disabled{% endif %}>
-                                            <option value="todos" {% if filtros.get('autor_tipo', 'todos') == 'todos' %}selected{% endif %}>
-                                                Todos os tipos
-                                            </option>
-                                            <option value="primario" {% if filtros.get('autor_tipo') == 'primario' %}selected{% endif %}>
-                                                Apenas Primário
-                                            </option>
-                                            <option value="secundario" {% if filtros.get('autor_tipo') == 'secundario' %}selected{% endif %}>
-                                                Apenas Secundário
-                                            </option>
-                                        </select>
-                                    </div>
-                                    <small class="help-text text-muted">
-                                        <i class="fas fa-info-circle"></i> Selecione um autor e escolha o tipo (opcional)
+                            <div class="col-md-6">
+                                <div class="filtro-group">
+                                    <label for="autor"><i class="fas fa-user-edit"></i> Autor</label>
+                                    <input type="text" 
+                                        class="form-control form-control-custom" 
+                                        id="autor" 
+                                        name="autor" 
+                                        value="{{ filtros.get('autor', '') }}"
+                                        placeholder="Digite nome do autor..."
+                                        aria-label="Busca por autor">
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-info-circle"></i> Busca inteligente (ex: "João Silva", "Machado de Assis")
                                     </small>
                                 </div>
                             </div>
@@ -198,46 +179,49 @@
                             <div class="col-md-6">
                                 <div class="filtro-group">
                                     <label for="conteudo"><i class="fas fa-file-text"></i> Conteúdo</label>
-                                    <select name="conteudo" class="select2-custom select2-conteudo" style="width: 100%;">
-                                        <option value="">Selecione um conteúdo...</option>
-                                        {% for conteudo in conteudos %}
-                                        <option value="{{ conteudo }}" 
-                                                {% if filtros.get('conteudo') == conteudo %}selected{% endif %}>
-                                            {{ conteudo[:50] }}{% if conteudo|length > 50 %}...{% endif %}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
+                                    <input type="text" 
+                                        class="form-control form-control-custom" 
+                                        id="conteudo" 
+                                        name="conteudo" 
+                                        value="{{ filtros.get('conteudo', '') }}"
+                                        placeholder="Digite palavras do conteúdo..."
+                                        aria-label="Busca por conteúdo">
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-info-circle"></i> Busca inteligente (ex: "arquitetura moderna", "engenharia")
+                                    </small>
                                 </div>
                             </div>
 
                             <!-- Executor, Editor, Área Geográfica (novos) -->
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="filtro-group">
-                                    <label for="executor_id"><i class="fas fa-tools"></i> Executor</label>
-                                    <select name="executor_id" class="form-control form-control-custom">
-                                        <option value="">Todos os executores...</option>
-                                        {% for executor in executores %}
-                                        <option value="{{ executor.id_executor }}" 
-                                                {% if filtros.get('executor_id')|string == executor.id_executor|string %}selected{% endif %}>
-                                            {{ executor.nome_executor }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
+                                    <label for="executor"><i class="fas fa-tools"></i> Executor</label>
+                                    <input type="text" 
+                                        class="form-control form-control-custom" 
+                                        id="executor" 
+                                        name="executor" 
+                                        value="{{ filtros.get('executor', '') }}"
+                                        placeholder="Digite nome do executor..."
+                                        aria-label="Busca por executor">
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-info-circle"></i> Busca inteligente (ex: "Construtora ABC", "Empresa XYZ")
+                                    </small>
                                 </div>
                             </div>
 
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="filtro-group">
-                                    <label for="editor_id"><i class="fas fa-print"></i> Editor</label>
-                                    <select name="editor_id" class="form-control form-control-custom">
-                                        <option value="">Todos os editores...</option>
-                                        {% for editor in editores %}
-                                        <option value="{{ editor.id_editor }}" 
-                                                {% if filtros.get('editor_id')|string == editor.id_editor|string %}selected{% endif %}>
-                                            {{ editor.nome_editor }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
+                                    <label for="editor"><i class="fas fa-print"></i> Editor</label>
+                                    <input type="text" 
+                                        class="form-control form-control-custom" 
+                                        id="editor" 
+                                        name="editor" 
+                                        value="{{ filtros.get('editor', '') }}"
+                                        placeholder="Digite nome da editora..."
+                                        aria-label="Busca por editor">
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-info-circle"></i> Busca inteligente (ex: "Editora Atlas", "Pearson")
+                                    </small>
                                 </div>
                             </div>
 

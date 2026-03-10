@@ -1,7 +1,7 @@
 import re
 from flask import Flask, render_template, request, jsonify
 from config import Config
-from models import db, Livro, Setor, Local, Assunto, Executor, Autor, Editor, AreaGeografica, LivroAutor
+from models import LivroEditor, LivroExecutor, db, Livro, Setor, Local, Assunto, Executor, Autor, Editor, AreaGeografica, LivroAutor
 from datetime import datetime
 from sqlalchemy import or_, extract
 
@@ -56,8 +56,8 @@ def listar_livros():
         request.args.get('mes'),
         request.args.get('ano'),
         request.args.get('conteudo'),
-        request.args.get('executor_id'),
-        request.args.get('editor_id'),
+        request.args.get('executor'),
+        request.args.get('editor'),
         request.args.get('area_id')
     ])
     
@@ -108,25 +108,46 @@ def listar_livros():
                     query = query.filter(*condicoes)
                 filtros['titulo'] = titulo_busca
         
-        # Filtro por Autor
-        if 'autor_id' in request.args and request.args['autor_id']:
-            try:
-                autor_id = int(request.args['autor_id'])
-                autor_tipo = request.args.get('autor_tipo', 'todos')
-                
-                subquery = db.session.query(LivroAutor.id_livro).filter(
-                    LivroAutor.id_autor == autor_id
-                )
-                if autor_tipo != 'todos':
-                    subquery = subquery.join(Autor, LivroAutor.id_autor == Autor.id_autor)\
-                                       .filter(Autor.tipo_autor == autor_tipo)
-                
-                query = query.filter(Livro.id_livro.in_(subquery))
-                filtros['autor_id'] = request.args['autor_id']
-                if autor_tipo != 'todos':
-                    filtros['autor_tipo'] = autor_tipo
-            except ValueError:
-                pass
+        # Filtro por Autor (busca textual inteligente)
+        if 'autor' in request.args and request.args['autor']:
+            termo = request.args['autor'].strip()
+            if termo:
+                def criar_padrao_regex(palavra):
+                    padrao = ''
+                    for letra in palavra.lower():
+                        if letra == 'a': padrao += '[aáàãâä]'
+                        elif letra == 'e': padrao += '[eéèêë]'
+                        elif letra == 'i': padrao += '[iíìîï]'
+                        elif letra == 'o': padrao += '[oóòõôö]'
+                        elif letra == 'u': padrao += '[uúùûü]'
+                        elif letra == 'c': padrao += '[cç]'
+                        else: padrao += re.escape(letra)
+                    return padrao
+
+                palavras = termo.split()
+                condicoes_autor = []
+
+                for palavra in palavras:
+                    if len(palavra) >= 2:
+                        padrao = criar_padrao_regex(palavra)
+                        try:
+                            # Tenta usar regex do PostgreSQL
+                            condicoes_autor.append(Autor.nome_autor.op('~*')(padrao))
+                        except Exception:
+                            # Fallback: ILIKE
+                            condicoes_autor.append(Autor.nome_autor.ilike(f"%{palavra}%"))
+                    else:
+                        condicoes_autor.append(Autor.nome_autor.ilike(f"%{palavra}%"))
+
+                if condicoes_autor:
+                    # JOIN com a tabela Autor via livro_autor
+                    subquery = db.session.query(LivroAutor.id_livro).join(
+                        Autor, LivroAutor.id_autor == Autor.id_autor
+                    ).filter(*condicoes_autor)
+                    
+                    query = query.filter(Livro.id_livro.in_(subquery))
+
+                filtros['autor'] = termo
         
         # Filtro por Local
         if 'local_id' in request.args and request.args['local_id']:
@@ -196,28 +217,117 @@ def listar_livros():
                     query = query.filter(extract('month', Livro.data_livro) == mes_int)
                     filtros['mes'] = mes
         
-        # Filtro por Conteúdo
+        # Filtro por Conteúdo (busca textual inteligente)
         if 'conteudo' in request.args and request.args['conteudo']:
-            query = query.filter(Livro.conteudo_livro.ilike(f"%{request.args['conteudo']}%"))
-            filtros['conteudo'] = request.args['conteudo']
+            termo = request.args['conteudo'].strip()
+            if termo:
+                def criar_padrao_regex(palavra):
+                    padrao = ''
+                    for letra in palavra.lower():
+                        if letra == 'a': padrao += '[aáàãâä]'
+                        elif letra == 'e': padrao += '[eéèêë]'
+                        elif letra == 'i': padrao += '[iíìîï]'
+                        elif letra == 'o': padrao += '[oóòõôö]'
+                        elif letra == 'u': padrao += '[uúùûü]'
+                        elif letra == 'c': padrao += '[cç]'
+                        else: padrao += re.escape(letra)
+                    return padrao
+
+                palavras = termo.split()
+                condicoes = []
+
+                for palavra in palavras:
+                    if len(palavra) >= 2:
+                        padrao = criar_padrao_regex(palavra)
+                        try:
+                            condicoes.append(Livro.conteudo_livro.op('~*')(padrao))
+                        except Exception:
+                            condicoes.append(Livro.conteudo_livro.ilike(f"%{palavra}%"))
+                    else:
+                        condicoes.append(Livro.conteudo_livro.ilike(f"%{palavra}%"))
+
+                if condicoes:
+                    query = query.filter(*condicoes)
+
+                filtros['conteudo'] = termo
         
-        # Filtro por Executor
-        if 'executor_id' in request.args and request.args['executor_id']:
-            try:
-                executor_id = int(request.args['executor_id'])
-                query = query.join(Livro.executores).filter(Executor.id_executor == executor_id)
-                filtros['executor_id'] = request.args['executor_id']
-            except ValueError:
-                pass
+        # Filtro por Executor (busca textual inteligente)
+        if 'executor' in request.args and request.args['executor']:
+            termo = request.args['executor'].strip()
+            if termo:
+                def criar_padrao_regex(palavra):
+                    padrao = ''
+                    for letra in palavra.lower():
+                        if letra == 'a': padrao += '[aáàãâä]'
+                        elif letra == 'e': padrao += '[eéèêë]'
+                        elif letra == 'i': padrao += '[iíìîï]'
+                        elif letra == 'o': padrao += '[oóòõôö]'
+                        elif letra == 'u': padrao += '[uúùûü]'
+                        elif letra == 'c': padrao += '[cç]'
+                        else: padrao += re.escape(letra)
+                    return padrao
+
+                palavras = termo.split()
+                condicoes_executor = []
+
+                for palavra in palavras:
+                    if len(palavra) >= 2:
+                        padrao = criar_padrao_regex(palavra)
+                        try:
+                            condicoes_executor.append(Executor.nome_executor.op('~*')(padrao))
+                        except Exception:
+                            condicoes_executor.append(Executor.nome_executor.ilike(f"%{palavra}%"))
+                    else:
+                        condicoes_executor.append(Executor.nome_executor.ilike(f"%{palavra}%"))
+
+                if condicoes_executor:
+                    # JOIN com a tabela Executor via livro_executor
+                    subquery = db.session.query(LivroExecutor.id_livro).join(
+                        Executor, LivroExecutor.id_executor == Executor.id_executor
+                    ).filter(*condicoes_executor)
+                    
+                    query = query.filter(Livro.id_livro.in_(subquery))
+
+                filtros['executor'] = termo
         
-        # Filtro por Editor
-        if 'editor_id' in request.args and request.args['editor_id']:
-            try:
-                editor_id = int(request.args['editor_id'])
-                query = query.join(Livro.editores).filter(Editor.id_editor == editor_id)
-                filtros['editor_id'] = request.args['editor_id']
-            except ValueError:
-                pass
+        # Filtro por Editor (busca textual inteligente)
+        if 'editor' in request.args and request.args['editor']:
+            termo = request.args['editor'].strip()
+            if termo:
+                def criar_padrao_regex(palavra):
+                    padrao = ''
+                    for letra in palavra.lower():
+                        if letra == 'a': padrao += '[aáàãâä]'
+                        elif letra == 'e': padrao += '[eéèêë]'
+                        elif letra == 'i': padrao += '[iíìîï]'
+                        elif letra == 'o': padrao += '[oóòõôö]'
+                        elif letra == 'u': padrao += '[uúùûü]'
+                        elif letra == 'c': padrao += '[cç]'
+                        else: padrao += re.escape(letra)
+                    return padrao
+
+                palavras = termo.split()
+                condicoes_editor = []
+
+                for palavra in palavras:
+                    if len(palavra) >= 2:
+                        padrao = criar_padrao_regex(palavra)
+                        try:
+                            condicoes_editor.append(Editor.nome_editor.op('~*')(padrao))
+                        except Exception:
+                            condicoes_editor.append(Editor.nome_editor.ilike(f"%{palavra}%"))
+                    else:
+                        condicoes_editor.append(Editor.nome_editor.ilike(f"%{palavra}%"))
+
+                if condicoes_editor:
+                    # JOIN com a tabela Editor via livro_editor
+                    subquery = db.session.query(LivroEditor.id_livro).join(
+                        Editor, LivroEditor.id_editor == Editor.id_editor
+                    ).filter(*condicoes_editor)
+                    
+                    query = query.filter(Livro.id_livro.in_(subquery))
+
+                filtros['editor'] = termo
         
         # Filtro por Área Geográfica
         if 'area_id' in request.args and request.args['area_id']:
