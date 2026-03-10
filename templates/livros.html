@@ -1,0 +1,519 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="fw-bold mb-1">
+                        <i class="fas fa-search text-primary me-2"></i>Consulta de Livros
+                    </h2>
+                    <p class="text-muted mb-0">Use os filtros abaixo para encontrar livros específicos</p>
+                </div>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingSpinner" class="loading-spinner">
+        <div class="spinner"></div>
+        <p class="mt-3">Buscando livros...</p>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card-modern">
+                <div class="card-header-modern d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter me-2"></i>Filtros de Busca
+                    </h5>
+                    <span class="badge bg-light text-dark">{{ livros|length }} resultados</span>
+                </div>
+                <div class="card-body p-5">
+                    <form method="GET" action="{{ url_for('listar_livros') }}" id="filtrosForm" onsubmit="showLoading()">
+                        <div class="row">
+                            <!-- Busca Rápida por Título -->
+                            <div class="col-12 mb-4">
+                                <div class="filtro-group">
+                                    <label for="titulo">
+                                        <i class="fas fa-heading"></i> Busca Rápida por Título
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="text" 
+                                               class="form-control form-control-custom" 
+                                               id="titulo" 
+                                               name="titulo" 
+                                               value="{{ filtros.get('titulo', '') }}"
+                                               placeholder="Digite palavras do título..."
+                                               aria-label="Busca por título">
+                                        <button class="btn btn-primary-custom" type="submit">
+                                            <i class="fas fa-search"></i> Buscar
+                                        </button>
+                                    </div>
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-info-circle"></i> A busca é case-insensitive e ignora acentos
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Filtros Avançados -->
+                            <div class="col-md-6">
+                                <div class="filtro-group">
+                                    <label for="id_livro"><i class="fas fa-hashtag"></i> ID do Livro</label>
+                                    <input type="number" 
+                                           class="form-control form-control-custom" 
+                                           id="id_livro" 
+                                           name="id_livro" 
+                                           value="{{ filtros.get('id_livro', '') }}"
+                                           placeholder="Digite o ID" 
+                                           min="1">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="filtro-group">
+                                    <label for="n_chamada"><i class="fas fa-file-alt"></i> Nº de Chamada</label>
+                                    <input type="text" 
+                                           class="form-control form-control-custom" 
+                                           id="n_chamada" 
+                                           name="n_chamada" 
+                                           value="{{ filtros.get('n_chamada', '') }}"
+                                           placeholder="Número de chamada">
+                                </div>
+                            </div>
+
+                            <!-- Autor com Tipo -->
+                            <div class="col-12">
+                                <div class="filtro-group autor-completo">
+                                    <label><i class="fas fa-user-edit"></i> Autor</label>
+                                    <div class="autor-dual-select">
+                                        <select name="autor_id" class="select2-custom select2-autor" style="width: 100%;">
+                                            <option value="">Selecione um autor...</option>
+                                            {% for autor in autores %}
+                                            <option value="{{ autor.id_autor }}" 
+                                                    data-tipo="{{ autor.tipo_autor }}"
+                                                    {% if filtros.get('autor_id')|string == autor.id_autor|string %}selected{% endif %}>
+                                                {{ autor.nome_autor }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        
+                                        <select name="autor_tipo" class="form-control form-control-custom tipo-select" 
+                                                {% if not filtros.get('autor_id') %}disabled{% endif %}>
+                                            <option value="todos" {% if filtros.get('autor_tipo', 'todos') == 'todos' %}selected{% endif %}>
+                                                Todos os tipos
+                                            </option>
+                                            <option value="primario" {% if filtros.get('autor_tipo') == 'primario' %}selected{% endif %}>
+                                                Apenas Primário
+                                            </option>
+                                            <option value="secundario" {% if filtros.get('autor_tipo') == 'secundario' %}selected{% endif %}>
+                                                Apenas Secundário
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <small class="help-text text-muted">
+                                        <i class="fas fa-info-circle"></i> Selecione um autor e escolha o tipo (opcional)
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Local, Setor, Assunto -->
+                            <div class="col-md-4">
+                                <div class="filtro-group">
+                                    <label for="local_id"><i class="fas fa-map-marker-alt"></i> Local</label>
+                                    <select name="local_id" class="form-control form-control-custom">
+                                        <option value="">Todos os locais...</option>
+                                        {% for local in locais %}
+                                        <option value="{{ local.id_local }}" 
+                                                {% if filtros.get('local_id')|string == local.id_local|string %}selected{% endif %}>
+                                            {{ local.nome_local }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="filtro-group">
+                                    <label for="setor_id"><i class="fas fa-building"></i> Setor</label>
+                                    <select name="setor_id" class="form-control form-control-custom">
+                                        <option value="">Todos os setores...</option>
+                                        {% for setor in setores %}
+                                        <option value="{{ setor.id_setor }}" 
+                                                {% if filtros.get('setor_id')|string == setor.id_setor|string %}selected{% endif %}>
+                                            {{ setor.nome_setor }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="filtro-group">
+                                    <label for="assunto"><i class="fas fa-tags"></i> Assunto</label>
+                                    <input type="text" 
+                                        class="form-control form-control-custom" 
+                                        id="assunto" 
+                                        name="assunto" 
+                                        value="{{ filtros.get('assunto', '') }}"
+                                        placeholder="Digite palavras do assunto..."
+                                        aria-label="Busca por assunto">
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-info-circle"></i> Busca inteligente (ex: "arquitetura", "engenharia civil")
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Data -->
+                            <div class="col-md-6">
+                                <div class="filtro-group">
+                                    <label><i class="fas fa-calendar-alt"></i> Data (Mês/Ano)</label>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <input type="number" 
+                                                   class="form-control form-control-custom" 
+                                                   name="mes" 
+                                                   value="{{ filtros.get('mes', '') }}" 
+                                                   placeholder="Mês (1-12)" 
+                                                   min="1" 
+                                                   max="12">
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="number" 
+                                                   class="form-control form-control-custom" 
+                                                   name="ano" 
+                                                   value="{{ filtros.get('ano', '') }}" 
+                                                   placeholder="Ano" 
+                                                   min="1900" 
+                                                   max="2100">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Conteúdo -->
+                            <div class="col-md-6">
+                                <div class="filtro-group">
+                                    <label for="conteudo"><i class="fas fa-file-text"></i> Conteúdo</label>
+                                    <select name="conteudo" class="select2-custom select2-conteudo" style="width: 100%;">
+                                        <option value="">Selecione um conteúdo...</option>
+                                        {% for conteudo in conteudos %}
+                                        <option value="{{ conteudo }}" 
+                                                {% if filtros.get('conteudo') == conteudo %}selected{% endif %}>
+                                            {{ conteudo[:50] }}{% if conteudo|length > 50 %}...{% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Executor, Editor, Área Geográfica (novos) -->
+                            <div class="col-md-4">
+                                <div class="filtro-group">
+                                    <label for="executor_id"><i class="fas fa-tools"></i> Executor</label>
+                                    <select name="executor_id" class="form-control form-control-custom">
+                                        <option value="">Todos os executores...</option>
+                                        {% for executor in executores %}
+                                        <option value="{{ executor.id_executor }}" 
+                                                {% if filtros.get('executor_id')|string == executor.id_executor|string %}selected{% endif %}>
+                                            {{ executor.nome_executor }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="filtro-group">
+                                    <label for="editor_id"><i class="fas fa-print"></i> Editor</label>
+                                    <select name="editor_id" class="form-control form-control-custom">
+                                        <option value="">Todos os editores...</option>
+                                        {% for editor in editores %}
+                                        <option value="{{ editor.id_editor }}" 
+                                                {% if filtros.get('editor_id')|string == editor.id_editor|string %}selected{% endif %}>
+                                            {{ editor.nome_editor }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="filtro-group">
+                                    <label for="area_id"><i class="fas fa-globe"></i> Área Geográfica</label>
+                                    <select name="area_id" class="form-control form-control-custom">
+                                        <option value="">Todas as áreas...</option>
+                                        {% for area in areas %}
+                                        <option value="{{ area.id_area_geografica }}" 
+                                                {% if filtros.get('area_id')|string == area.id_area_geografica|string %}selected{% endif %}>
+                                            {{ area.nome_area_geografica }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <button type="submit" class="btn btn-primary-custom me-2">
+                                            <i class="fas fa-search me-1"></i> Aplicar Filtros
+                                        </button>
+                                        <a href="{{ url_for('listar_livros') }}" class="btn btn-outline-secondary">
+                                            <i class="fas fa-redo me-1"></i> Limpar Filtros
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card-modern">
+                <div class="card-header-modern d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list-alt me-2"></i>Resultados da Busca
+                        <span class="badge bg-light text-dark ms-2">{{ livros|length }}</span>
+                    </h5>
+                    
+                    {% if filtros %}
+                    <div class="d-flex align-items-center">
+                        <small class="text-muted me-3">
+                            <i class="fas fa-filter me-1"></i>Filtros aplicados
+                        </small>
+                        {% for key, value in filtros.items() %}
+                        <span class="badge bg-info me-1">{{ key }}: {{ value }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body p-5">
+                    {% if livros %}
+                    <div class="livros-list">
+                        {% for livro in livros %}
+                        <div class="livro-card-modern">
+                            <div class="livro-header-modern">
+                                <div>
+                                    <h4 class="mb-0">#{{ livro.id_livro }} - {{ livro.titulo_livro or '(Sem título)' }}</h4>
+                                    <div class="d-flex align-items-center mt-1">
+                                        <span class="livro-chamada-modern me-3">
+                                            <i class="fas fa-file-alt me-1"></i>{{ livro.n_chamada_livro or 'N/A' }}
+                                        </span>
+                                        {% if livro.data_livro %}
+                                        <span class="text-muted">
+                                            <i class="fas fa-calendar me-1"></i>{{ livro.data_livro.strftime('%d/%m/%Y') }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        type="button" 
+                                        data-bs-toggle="collapse" 
+                                        data-bs-target="#detalhes{{ livro.id_livro }}">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="livro-tags-modern">
+                                {% if livro.local %}
+                                <span class="tag-modern">
+                                    <i class="fas fa-map-marker-alt me-1"></i>{{ livro.local.nome_local }}
+                                </span>
+                                {% endif %}
+                                
+                                {% if livro.setor %}
+                                <span class="tag-modern">
+                                    <i class="fas fa-building me-1"></i>{{ livro.setor.nome_setor }}
+                                </span>
+                                {% endif %}
+                                
+                                {% if livro.assunto %}
+                                <span class="tag-modern">
+                                    <i class="fas fa-tags me-1"></i>{{ livro.assunto.nome_assunto }}
+                                </span>
+                                {% endif %}
+                                
+                                {% if livro.autores %}
+                                <span class="tag-modern">
+                                    <i class="fas fa-users me-1"></i>{{ livro.autores|length }} autor(es)
+                                </span>
+                                {% endif %}
+                                
+                                {% if livro.editores %}
+                                <span class="tag-modern">
+                                    <i class="fas fa-print me-1"></i>{{ livro.editores|length }} editor(es)
+                                </span>
+                                {% endif %}
+                            </div>
+                            
+                            {% if livro.conteudo_livro %}
+                            <p class="mb-2">
+                                <strong><i class="fas fa-align-left me-1"></i>Conteúdo:</strong> 
+                                {{ livro.conteudo_livro[:150] }}{% if livro.conteudo_livro|length > 150 %}...{% endif %}
+                            </p>
+                            {% endif %}
+                            
+                            <div class="collapse mt-3" id="detalhes{{ livro.id_livro }}">
+                                <div class="card card-body border-0 bg-light">
+                                    <h6><i class="fas fa-info-circle me-1"></i>Detalhes Completos</h6>
+                                    
+                                    <div class="row mt-2">
+                                        {% if livro.autores %}
+                                        <div class="col-md-6">
+                                            <p class="mb-1"><strong>Autores:</strong></p>
+                                            <ul class="list-unstyled">
+                                                {% for autor in livro.autores %}
+                                                <li>
+                                                    <i class="fas fa-user me-1"></i>{{ autor.nome_autor }} 
+                                                    <span class="badge bg-secondary">{{ autor.tipo_autor }}</span>
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        {% if livro.editores %}
+                                        <div class="col-md-6">
+                                            <p class="mb-1"><strong>Editores:</strong></p>
+                                            <ul class="list-unstyled">
+                                                {% for editor in livro.editores %}
+                                                <li><i class="fas fa-print me-1"></i>{{ editor.nome_editor }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        {% if livro.executores %}
+                                        <div class="col-md-6">
+                                            <p class="mb-1"><strong>Executores:</strong></p>
+                                            <ul class="list-unstyled">
+                                                {% for executor in livro.executores %}
+                                                <li><i class="fas fa-toolbox me-1"></i>{{ executor.nome_executor }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        {% if livro.areas_geograficas %}
+                                        <div class="col-md-6">
+                                            <p class="mb-1"><strong>Áreas Geográficas:</strong></p>
+                                            <ul class="list-unstyled">
+                                                {% for area in livro.areas_geograficas %}
+                                                <li><i class="fas fa-globe me-1"></i>{{ area.nome_area_geografica }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <div class="col-12">
+                                            <p class="mb-1"><strong>Informações adicionais:</strong></p>
+                                            <ul class="list-unstyled">
+                                                {% if livro.tipo_livro %}<li><i class="fas fa-tag me-1"></i>Tipo: {{ livro.tipo_livro }}</li>{% endif %}
+                                                {% if livro.idioma_livro %}<li><i class="fas fa-language me-1"></i>Idioma: {{ livro.idioma_livro }}</li>{% endif %}
+                                                {% if livro.edicao_livro %}<li><i class="fas fa-hashtag me-1"></i>Edição: {{ livro.edicao_livro }}</li>{% endif %}
+                                                {% if livro.serie_livro %}<li><i class="fas fa-layer-group me-1"></i>Série: {{ livro.serie_livro }}</li>{% endif %}
+                                                {% if livro.colacao_paginas_livro %}<li><i class="fas fa-pager me-1"></i>Páginas: {{ livro.colacao_paginas_livro }}</li>{% endif %}
+                                                {% if livro.colacao_volume_tomo_livro %}<li><i class="fas fa-box me-1"></i>Volume/Tomo: {{ livro.colacao_volume_tomo_livro }}</li>{% endif %}
+                                                {% if livro.outros_formatos_disponiveis_livro %}<li><i class="fas fa-file-pdf me-1"></i>Outros formatos: {{ livro.outros_formatos_disponiveis_livro }}</li>{% endif %}
+                                                {% if livro.aquisicao_livro %}<li><i class="fas fa-shopping-cart me-1"></i>Aquisição: {{ livro.aquisicao_livro }}</li>{% endif %}
+                                                {% if livro.fonte_livro %}<li><i class="fas fa-database me-1"></i>Fonte: {{ livro.fonte_livro }}</li>{% endif %}
+                                            </ul>
+                                        </div>
+                                        
+                                        {% if livro.notas_gerais_livro %}
+                                        <div class="col-12">
+                                            <p class="mb-1"><strong>Notas Gerais:</strong></p>
+                                            <p class="mb-0">{{ livro.notas_gerais_livro }}</p>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-search fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">Nenhum livro encontrado</h4>
+                        <p class="text-muted">Tente ajustar os filtros da sua busca</p>
+                        <a href="{{ url_for('listar_livros') }}" class="btn btn-primary-custom mt-2">
+                            <i class="fas fa-redo me-1"></i> Limpar Filtros
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if livros|length > 20 %}
+                    <nav aria-label="Paginação de resultados" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item disabled">
+                                <a class="page-link" href="#" tabindex="-1">Anterior</a>
+                            </li>
+                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                            <li class="page-item"><a class="page-link" href="#">2</a></li>
+                            <li class="page-item"><a class="page-link" href="#">3</a></li>
+                            <li class="page-item">
+                                <a class="page-link" href="#">Próxima</a>
+                            </li>
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('.select2-autor, .select2-conteudo').select2({
+        theme: 'bootstrap-5',
+        placeholder: "Selecione...",
+        allowClear: true,
+        language: "pt-BR",
+        width: '100%'
+    });
+    
+    const autorSelect = $('select[name="autor_id"]');
+    const tipoSelect = $('select[name="autor_tipo"]');
+    
+    if (!autorSelect.val()) {
+        tipoSelect.prop('disabled', true);
+    }
+    
+    autorSelect.on('change', function() {
+        if ($(this).val()) {
+            tipoSelect.prop('disabled', false);
+        } else {
+            tipoSelect.prop('disabled', true);
+            tipoSelect.val('todos');
+        }
+    });
+    
+    window.showLoading = function() {
+        $('#loadingSpinner').fadeIn();
+    }
+    
+    $(window).on('load', function() {
+        $('#loadingSpinner').fadeOut();
+    });
+    
+    $('.livro-card-modern').each(function(i) {
+        $(this).delay(i * 100).animate({ opacity: 1 }, 500);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,46 @@
+# Crie o arquivo .gitignore na raiz do projeto
+@"
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database
+*.db
+*.sqlite3
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Flask
+instance/
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
+desktop.ini
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+"@ | Out-File .gitignore -Encoding UTF8

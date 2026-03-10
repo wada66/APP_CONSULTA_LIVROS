@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row align-items-center mb-5">
+        <div class="col-lg-6">
+            <h1 class="display-4 fw-bold mb-4">
+                <span class="text-primary">Consulta Inteligente</span> do Acervo
+            </h1>
+            <p class="lead mb-4">
+                Sistema avançado para busca e análise de livros do acervo. 
+                Encontre rapidamente o que precisa com filtros poderosos e interface intuitiva.
+            </p>
+            <div class="d-flex gap-3">
+                <a href="{{ url_for('listar_livros') }}" class="btn btn-primary-custom btn-lg">
+                    <i class="fas fa-search me-2"></i> Consultar Livros
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card-modern p-4">
+                <div class="text-center">
+                    <i class="fas fa-book-open text-primary" style="font-size: 8rem;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-5 justify-content-center">
+        <div class="col-12">
+            <h2 class="mb-4 text-center">Visão Geral do Acervo</h2>
+        </div>
+        
+        <div class="col-6">
+            <div class="stats-card">
+                <div class="stats-number">{{ total_livros }}</div>
+                <div class="stats-label">Livros Cadastrados</div>
+                <i class="fas fa-book text-primary mt-3" style="font-size: 2rem;"></i>
+            </div>
+        </div>
+        
+        <div class="col-6">
+            <div class="stats-card">
+                <div class="stats-number">{{ total_autores if total_autores else '0' }}</div>
+                <div class="stats-label">Autores</div>
+                <i class="fas fa-users text-primary mt-3" style="font-size: 2rem;"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-5 justify-content-center">
+        <div class="col-12">
+            <h2 class="mb-4 text-center">Funcionalidades Principais</h2>
+        </div>
+        
+        <div class="col-6">
+            <div class="card-modern p-4 text-center h-90">
+                <div class="mb-3">
+                    <i class="fas fa-filter text-primary mt-3" style="font-size: 2rem;"></i>
+                </div>
+                <h4>Filtros Avançados</h4>
+                <p>Busque por título, autor, local, data, assunto, editor e muito mais.</p>
+            </div>
+        </div>
+        
+        <div class="col-6">
+            <div class="card-modern p-4 text-center h-90">
+                <div class="mb-3">
+                    <i class="fas fa-search text-primary mt-3" style="font-size: 2rem;"></i>
+                </div>
+                <h4>Busca Inteligente</h4>
+                <p>Encontre livros mesmo digitando sem acentos ou com maiúsculas/minúsculas diferentes.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card-modern p-5 text-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <h2 class="mb-3">Pronto para explorar?</h2>
+                <p class="mb-4">Navegue por nosso acervo completo com ferramentas de busca poderosas.</p>
+                <a href="{{ url_for('listar_livros') }}" class="btn btn-light btn-lg">
+                    <i class="fas fa-rocket me-2"></i> Iniciar Consulta
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (!{{ total_livros|default(0) }}) {
+            fetch('/api/estatisticas')
+                .then(response => response.json())
+                .then(data => {
+                    document.querySelectorAll('.stats-number')[0].textContent = data.total_livros;
+                })
+                .catch(error => console.error('Erro ao carregar estatísticas:', error));
+        }
+    });
+</script>
+{% endblock %}
