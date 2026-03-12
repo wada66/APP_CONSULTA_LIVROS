@@ -49,7 +49,7 @@ def listar_livros():
         request.args.get('id_livro'),
         request.args.get('n_chamada'),
         request.args.get('titulo'),
-        request.args.get('autor_id'),
+        request.args.get('autor'),
         request.args.get('local_id'),
         request.args.get('setor_id'),
         request.args.get('assunto'),
